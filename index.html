@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Odtwarzacz MP3 / MP4 + YouTube 🎧</title>
+  <style>
+    :root {
+      --bg: #0e1629;
+      --card: rgba(17, 25, 40, 0.75);
+      --accent: #06b6d4;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --radius: 16px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      --blur: 12px;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: "Inter", system-ui, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #071026 0%, #0c203b 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      width: 900px;
+      max-width: 100%;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(var(--blur));
+      padding: 32px;
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+      font-size: 26px;
+      background: linear-gradient(90deg, #06b6d4, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.lead {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    .uploader {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .drop {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px dashed rgba(255, 255, 255, 0.1);
+      padding: 24px;
+      border-radius: var(--radius);
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .drop.dragover {
+      border-color: var(--accent);
+      box-shadow: 0 0 18px rgba(6, 182, 212, 0.2);
+      transform: scale(1.02);
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #042027;
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #08c0e1;
+      transform: translateY(-1px);
+    }
+
+    .preview {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 16px;
+      border-radius: var(--radius);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+    }
+
+    #ytUrl {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      font-size: 14px;
+      transition: border 0.2s ease;
+    }
+
+    #ytUrl:focus {
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    #ytPlayerWrap {
+      margin-top: 16px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+    }
+
+    footer {
+      margin-top: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 600px) {
+      .card { padding: 20px; }
+      h1 { font-size: 22px; }
+      #ytUrl { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Odtwarzacz MP3 / MP4 + YouTube 🎵</h1>
+    <p class="lead">Wybierz plik lub wklej link z YouTube, a strona odtworzy go lokalnie.</p>
+
+    <div class="uploader">
+      <div class="drop" id="drop">
+        <form id="fwrap">
+          <label for="fileInput" style="cursor:pointer">
+            <div style="font-weight:700;margin-bottom:8px">📁 Przeciągnij plik lub kliknij, by wybrać</div>
+            <div class="small">Obsługiwane: mp3, mp4, wav, webm, ogg i inne</div>
+          </label>
+          <input id="fileInput" type="file" accept="audio/*,video/*" style="display:none;" />
+        </form>
+      </div>
+
+      <div class="preview" id="preview">
+        <div id="fileinfo" style="display:none">
+          <div id="fname" style="font-weight:700;margin-bottom:4px">--</div>
+          <div id="fmeta" style="color:#94a3b8;font-size:14px;">--</div>
+        </div>
+
+        <div id="playerWrap" style="display:none"></div>
+
+        <div class="controls" id="controls" style="display:none">
+          <button id="play" class="btn">▶ Odtwórz</button>
+          <button id="pause" class="btn" style="background:#374151;color:#fff">⏸ Pauza</button>
+          <span style="font-size:13px;color:var(--muted)">🔊 Głośność</span>
+          <input id="vol" type="range" min="0" max="1" step="0.01" value="1" />
+        </div>
+
+        <div id="error" style="color:#ff9b9b;display:none;margin-top:8px;"></div>
+      </div>
+
+      <!-- Sekcja YouTube -->
+      <div style="margin-top:20px">
+        <h2 style="font-size:18px;text-align:center;margin-bottom:10px;">🎬 Wklej link z YouTube</h2>
+        <div style="display:flex;gap:10px;">
+          <input id="ytUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." />
+          <button id="ytPlay" class="btn">Odtwórz</button>
+        </div>
+        <div id="ytPlayerWrap" style="display:none;"></div>
+      </div>
+    </div>
+
+    <footer>© 2025 Twój Odtwarzacz — Wszystkie prawa zastrzeżone.</footer>
+  </div>
+
+<script>
+(() => {
+  const drop = document.getElementById('drop');
+  const fileInput = document.getElementById('fileInput');
+  const fileinfo = document.getElementById('fileinfo');
+  const fname = document.getElementById('fname');
+  const fmeta = document.getElementById('fmeta');
+  const playerWrap = document.getElementById('playerWrap');
+  const controls = document.getElementById('controls');
+  const playBtn = document.getElementById('play');
+  const pauseBtn = document.getElementById('pause');
+  const vol = document.getElementById('vol');
+  const error = document.getElementById('error');
+
+  let currentURL = null;
+  let currentMedia = null;
+
+  function reset() {
+    if (currentURL) URL.revokeObjectURL(currentURL);
+    currentURL = null;
+    playerWrap.innerHTML = '';
+    fileinfo.style.display = 'none';
+    controls.style.display = 'none';
+    error.style.display = 'none';
+  }
+
+  function showError(text) {
+    error.textContent = text;
+    error.style.display = 'block';
+  }
+
+  function handleFile(file) {
+    reset();
+    if (!file) return;
+    const type = file.type || '';
+    const name = file.name || 'plik';
+    fname.textContent = name;
+    fmeta.textContent = `${(file.size/1024/1024).toFixed(2)} MB — ${type || 'brak typu'}`;
+    fileinfo.style.display = 'block';
+
+    const url = URL.createObjectURL(file);
+    currentURL = url;
+
+    if (type.startsWith('audio/') || /\.(mp3|wav|m4a|ogg)$/i.test(name)) {
+      const audio = document.createElement('audio');
+      audio.controls = true;
+      audio.src = url;
+      audio.style.width = '100%';
+      playerWrap.appendChild(audio);
+      currentMedia = audio;
+      controls.style.display = 'flex';
+    } else if (type.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(name)) {
+      const video = document.createElement('video');
+      video.controls = true;
+      video.src = url;
+      video.style.width = '100%';
+      video.style.maxHeight = '380px';
+      video.style.borderRadius = "10px";
+      playerWrap.appendChild(video);
+      currentMedia = video;
+      controls.style.display = 'flex';
+    } else {
+      showError('Nieobsługiwany typ pliku.');
+      return;
+    }
+
+    playerWrap.style.display = 'block';
+    playBtn.onclick = () => { if (currentMedia) currentMedia.play(); };
+    pauseBtn.onclick = () => { if (currentMedia) currentMedia.pause(); };
+    vol.oninput = () => { if (currentMedia) currentMedia.volume = vol.value; };
+  }
+
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    handleFile(f);
+  });
+
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    drop.classList.remove('dragover');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    handleFile(f);
+  });
+
+  // YouTube
+  const ytUrl = document.getElementById('ytUrl');
+  const ytPlay = document.getElementById('ytPlay');
+  const ytPlayerWrap = document.getElementById('ytPlayerWrap');
+
+  ytPlay.addEventListener('click', () => {
+    const url = ytUrl.value.trim();
+    if (!url) return showError('Podaj link do YouTube!');
+    const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (!match) {
+      showError('Nieprawidłowy link YouTube.');
+      return;
+    }
+
+    const videoId = match[1];
+    ytPlayerWrap.innerHTML = `
+      <iframe width="100%" height="380" 
+              src="https://www.youtube.com/embed/${videoId}" 
+              title="YouTube video player" frameborder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowfullscreen></iframe>`;
+    ytPlayerWrap.style.display = 'block';
+    error.style.display = 'none';
+  });
+})();
+</script>
+</body>
+</html>
